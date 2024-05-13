@@ -1,0 +1,213 @@
+---
+title: "worksheet04_group01"
+author: "Antonio Alfaro de Prado, Hyunchang Oh, Tanya Toluay"
+date: "2024-05-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load necessary libraries
+library(readr)  # for reading CSV files
+library(ggplot2)  # for plotting
+library(ggflags)  # for flag plots
+library(dplyr) # to use pipeline
+library(HistData) # for 3rd question dataset
+library(countrycode) # for 1st question
+```
+
+## Exercise 1 - Simple linear regression
+
+```{r message = FALSE, error = FALSE, warning = FALSE}
+
+chocolate <- read_csv("C:/Users/tanya/Downloads/chocolate.csv")
+head(chocolate)
+chocolate$code <- tolower(countrycode(chocolate$Country, "country.name", "iso2c"))
+
+lm_model <- lm(`Per capita chocolate consumption (kg)` ~ 
+                 `Nobel prizes per capita (scaled by 10 million)`, data = chocolate)
+summary(lm_model)
+
+
+ggplot(chocolate, aes(x = `Nobel prizes per capita (scaled by 10 million)`, 
+                      y = `Per capita chocolate consumption (kg)`, label = Country)) +
+  geom_point() +  # Scatter plot of data points
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Add regression line
+  geom_flag(aes(country=chocolate$code),size = 10) +  # Add country names to points
+  labs(x = "Nobel Prizes per Capita (scaled by 10 million)", 
+       y = "Per Capita Chocolate Consumption (kg)", 
+       title = "Scatter Plot: Chocolate Consumption vs. Nobel Prizes") +
+    theme_minimal()
+
+#What are the dependent and independent variables for your model? 
+#Visualize both using a scatterplot
+intercept <- coef(lm_model)[1]
+slope <- coef(lm_model)[2]
+r_squared <- summary(lm_model)$r.squared
+
+cat("Intercept:", intercept, "\n")
+cat("Slope:", slope, "\n")
+cat("Coefficient of determination (R^2):", r_squared, "\n")
+
+#add geom_smooth
+ggplot(chocolate, aes(x = `Nobel prizes per capita (scaled by 10 million)`, 
+                      y = `Per capita chocolate consumption (kg)`, label = Country)) +
+  geom_point() +  # Scatter plot of data points
+  # Add regression line using geom_smooth
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  
+  # Add regression line computed manually
+  geom_abline(intercept = intercept, slope = slope, color = "red") +  
+  # Add country names to points
+  geom_flag(aes(country=chocolate$code),size = 10) +  
+  labs(x = "Nobel Prizes per Capita (scaled by 10 million)", 
+       y = "Per Capita Chocolate Consumption (kg)", 
+       title = "Scatter Plot: Chocolate Consumption vs. Nobel Prizes") +
+  theme_minimal()
+
+
+```
+
+### Discussion
+
+The p-values associated with the coefficients suggest that these relationships are statistically significant at conventional significance levels (p < 0.05), indicating that the observed relationships are unlikely to have occurred by chance.
+
+Additionally, the R-squared value of 0.5135 indicates that approximately 51.35% of the variability in per capita chocolate consumption can be explained by the linear relationship with Nobel prizes per capita.
+
+Overall, these findings suggest a positive association between Nobel prizes per capita and per capita chocolate consumption, indicating that regions or countries with higher numbers of Nobel prizes per capita tend to have higher levels of chocolate consumption. 
+
+However, it's important to note that correlation does not imply causation! We think there are more complex reasons behind this p-value, and we should investigate this further. One example could be that it's possible that higher socioeconomic standards lead to higher chocolate consumption as wealthier individuals or countries may have greater disposable income to spend on luxury items like chocolate. Elsewise, we could argue that countries such as Brazil or Columbia where we import the chocolate from would earn the most nobel prizes.
+
+Let's note that it seems like it is almost as if the people who make chocolate are the same people who give out Nobel prizes.
+
+
+
+
+
+
+
+
+
+
+## Exercise 2 - Four datasets 
+```{r message = FALSE, error = FALSE, warning = FALSE}
+data <- read_csv("C:/Users/tanya/Downloads/four_datasets.csv")
+
+#summary(data)
+
+summary_stats <- data %>%
+  group_by(Dataset) %>%
+  summarise(
+    mean_x = mean(x),
+    std_x = sd(x),
+    mean_y = mean(y),
+    std_y = sd(y),
+    correlation = cor(x, y)
+  )
+
+# Fit linear regression model and visualize the data for each group
+lm_model <- lm(y ~ x, data = data)
+summary(lm_model)
+
+
+ggplot(data, aes(x = x, y = y, color = Dataset)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Scatter Plot with Regression Line",
+       x = "X",
+       y = "Y",
+       color = "Group")
+
+```
+
+### Discussion
+
+The dataset includes four groups labeled A, B, C, and D, with observations for two variables, x and y.
+
+For all groups combined, the average value of x is around 9, with some variation within groups (standard deviation of about 3.32). Similarly, the average value of y is approximately 7.50, with some variability (standard deviation around 2.03).
+
+There's a strong positive relationship between x and y in each group. This means that as x values increase, y values tend to increase as well, and vice versa. The correlation between x and y is consistently high across all groups, with values ranging from 0.816 to 0.817.
+
+Using linear regression models, we found that there's a significant linear relationship between x and y in each group. This is supported by the high correlation values and the fitted regression lines in the scatter plots.
+
+In conclusion, we see consistent pattern across all groups, indicating a strong association between variables x and y, characterized by a positive linear trend.
+
+## Exercise 3 - Regression to the mean
+```{r message = FALSE, error = FALSE, warning = FALSE}
+galton <- GaltonFamilies
+head(galton)
+
+# Filter data for sons
+galton_males <- subset(galton, gender == "male")
+
+lm_model <- lm(childHeight ~ father, data = galton_males)
+summary(lm_model)
+
+# I dont think this looks right, check it again
+ggplot(galton_males, aes(x = father, y = childHeight)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, fill = "lightblue") +
+#   geom_line() +
+  labs(title = "Linear Regression: Height of Sons vs. Height of Fathers (Males Only)",
+       x = "Father's Height",
+       y = "Child's Height")
+
+# Regress the height of fathers on the height of sons
+lm_model_father_on_son <- lm(father ~ childHeight, data = galton_males)
+slope_father_on_son <- coef(lm_model_father_on_son)[2]
+lm_model_son_on_father <- lm(childHeight ~ father, data = galton_males)
+slope_son_on_father <- coef(lm_model_son_on_father)[2]
+
+slope_father_on_son
+slope_son_on_father
+
+# Relationship between the slopes
+inverse_slope_son_on_father <- 1 / slope_father_on_son
+inverse_slope_father_on_son <- 1 / slope_son_on_father
+
+# Output the relationship
+inverse_slope_son_on_father
+inverse_slope_father_on_son
+
+lm_model_father_on_son <- lm(father ~ childHeight, data = galton_males)
+lm_model_son_on_father <- lm(childHeight ~ father, data = galton_males)
+
+# Create prediction data frames for both models
+prediction_data_father_on_son <- data.frame(childHeight = 
+                                              seq(min(galton_males$childHeight), 
+                                                  max(galton_males$childHeight), 
+                                                  length.out = 100))
+prediction_data_son_on_father <- data.frame(father = 
+                                              seq(min(galton_males$father), 
+                                                  max(galton_males$father), 
+                                                  length.out = 100))
+
+# Predict father's height and son's height for both models
+prediction_data_father_on_son$father <- predict(lm_model_father_on_son, 
+                                                newdata = prediction_data_father_on_son)
+prediction_data_son_on_father$childHeight <- predict(lm_model_son_on_father, 
+                                                     newdata = 
+                                                       prediction_data_son_on_father)
+
+ggplot(galton_males, aes(x = childHeight, y = father)) +
+  geom_point() +
+  geom_line(data = prediction_data_father_on_son, 
+            aes(x = childHeight, y = father), 
+            color = "blue") +
+  geom_line(data = prediction_data_son_on_father, 
+            aes(x = childHeight, y = childHeight), 
+            color = "red", linetype = "dashed") +
+  labs(title = "Regression Lines: Father's Height on Son's Height and Vice Versa",
+       x = "Son's Height",
+       y = "Father's Height") +
+  theme_minimal()
+
+```
+
+### Discussion
+
+The concept of regression to the mean, or reversion to mediocrity, is a phenomenon observed when extreme values in a sample tend to move closer to the average or mean value upon subsequent measurements. In the context of the Galton dataset and the relationship between the height of fathers and sons, as follows:
+
+If a father has an extreme height (either exceptionally tall or short), his son's predicted height, according to the regression model, will tend to be closer to the average height (mean) of the population. This is because extreme heights are less likely to be maintained across generations due to genetic recombination and environmental factors. Conversely, if a father has a height close to the average, his son's predicted height will also tend to be close to the average, but with less extreme deviation.
+
+So the regression to the mean phenomenon suggests that extreme values observed in one generation are likely to be less extreme in the next generation, tending towards the population average. This is reflected in the relationship between the heights of fathers and sons, where extreme heights in fathers tend to be moderated towards the average height in their sons.
